@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { PoolsPanel } from "./PoolsPanel";
 import { fetchPools } from "@/lib/api";
 
+import React from 'react';
+import * as search from '@/lib/search';
 const mockReplace = vi.fn();
 let mockSearchParamsString = "";
 
@@ -154,5 +156,39 @@ describe("PoolsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
 
     await waitFor(() => expect(fetchPools).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not recompute filteredPools on unrelated parent re-render", async () => {
+    vi.mocked(fetchPools).mockResolvedValue([
+      { asset: "USDC", total: 1000, anchors: 2 },
+      { asset: "EURC", total: 500, anchors: 1 },
+    ]);
+
+    const matchesSpy = vi.spyOn(search, "matchesQuery");
+
+    const Wrapper = () => {
+      const [tick, setTick] = React.useState(0);
+      return (
+        <div>
+          <button onClick={() => setTick((c) => c + 1)} data-testid="inc">
+            Inc
+          </button>
+          <PoolsPanel />
+        </div>
+      );
+    };
+
+    render(<Wrapper />);
+    await screen.findByText("USDC");
+    // initial calls: one per pool
+    const initialCalls = matchesSpy.mock.calls.length;
+    expect(initialCalls).toBeGreaterThanOrEqual(2);
+
+    // Trigger unrelated parent re-render
+    fireEvent.click(screen.getByTestId("inc"));
+    // Wait a tick to allow possible effects
+    await new Promise((r) => setTimeout(r, 0));
+    const afterCalls = matchesSpy.mock.calls.length;
+    expect(afterCalls).toBe(initialCalls);
   });
 });

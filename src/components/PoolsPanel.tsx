@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { fetchPools } from "@/lib/api";
 import { formatAmount } from "@/lib/format";
 import { matchesQuery } from "@/lib/search";
@@ -47,11 +47,9 @@ export function PoolsPanel() {
     );
   }
 
-  const totalLiquidity = state.data.reduce((sum, p) => sum + p.total, 0);
-  const positions = state.data.reduce((sum, p) => sum + p.anchors, 0);
-  const filteredPools = state.data.filter((pool) =>
-    matchesQuery([pool.asset], query),
-  );
+  const totalLiquidity = useMemo(() => state.data.reduce((sum, p) => sum + p.total, 0), [state.data]);
+  const positions = useMemo(() => state.data.reduce((sum, p) => sum + p.anchors, 0), [state.data]);
+  const filteredPools = useMemo(() => state.data.filter((pool) => matchesQuery([pool.asset], query)), [state.data, query]);
 
   return (
     <div className="space-y-6">
